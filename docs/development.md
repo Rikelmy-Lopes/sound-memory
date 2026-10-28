@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide explains how to work locally on the `bt-volume` codebase, from building the project to running tests and making feature additions.
+This guide explains how to work locally on the `sound-memory` codebase, from building the project to running tests and making feature additions.
 
 ## Prerequisites
 
@@ -13,14 +13,14 @@ This guide explains how to work locally on the `bt-volume` codebase, from buildi
 From the repository root:
 
 ```powershell
-cargo build            # Debug executable under target/debug/bt-volume.exe
+cargo build            # Debug executable under target/debug/sound-memory.exe
 cargo build --release  # Optimized ~4.7 MB release binary; strip is enabled in [profile.release]
 ```
 
 Run the release binary directly:
 
 ```powershell
-.\target\release\bt-volume.exe
+.\target\release\sound-memory.exe
 ```
 
 Optional startup flag `--show` forces the devices window to open immediately.
@@ -28,7 +28,7 @@ Optional startup flag `--show` forces the devices window to open immediately.
 Run the debug binary to see logs in the console:
 
 ```powershell
-.\target\debug\bt-volume.exe --show
+.\target\debug\sound-memory.exe --show
 ```
 
 ## Tests

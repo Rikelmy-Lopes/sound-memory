@@ -17,7 +17,7 @@ use crate::core::util;
 use crate::features::audio::AudioRequest;
 use crate::features::store;
 
-const WINDOW_TITLE: &str = "bt-volume · devices";
+const WINDOW_TITLE: &str = "sound-memory · devices";
 
 /// Saved percentage plus the live percentage when the device is connected.
 fn row_for(device: &SavedDevice, connected: &[DeviceStatus]) -> (u32, Option<u32>) {
@@ -41,7 +41,7 @@ pub(super) fn run_window() {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_app_id("bt-volume")
+            .with_app_id("sound-memory")
             .with_title(WINDOW_TITLE)
             .with_inner_size([620.0, 420.0])
             .with_min_inner_size([420.0, 240.0]),
@@ -64,8 +64,8 @@ pub(super) fn run_window() {
         UNAVAILABLE.store(true, Ordering::SeqCst);
         util::log(&format!("devices window failed: {err}"));
         util::show_message(
-            &format!("bt-volume could not create its devices window:\n{err}"),
-            "bt-volume",
+            &format!("sound-memory could not create its devices window:\n{err}"),
+            "sound-memory",
             true,
         );
     }

@@ -1,4 +1,4 @@
-# bt-volume
+# sound-memory
 
 A small, native Windows tray utility that remembers the volume level of every
 Bluetooth audio device you use and restores it automatically when that device
@@ -39,14 +39,14 @@ cargo build --release
 cargo test
 ```
 
-The executable is `target\release\bt-volume.exe`.
+The executable is `target\release\sound-memory.exe`.
 
 The program has no administrator requirement. To use it from anywhere, copy the
 executable to a folder of your choice and run it once.
 
 ## Usage
 
-1. Start `bt-volume.exe`. An icon appears in the notification area; no window is
+1. Start `sound-memory.exe`. An icon appears in the notification area; no window is
    created at startup.
 2. Connect your Bluetooth headphones. The first connection stores the current
    level and shows a notification.
@@ -55,7 +55,7 @@ executable to a folder of your choice and run it once.
 5. Left click the tray icon (or use **Devices window…** in the menu) to see
    every remembered device with its saved and current level.
 
-Start with `bt-volume.exe --show` to open the devices window immediately.
+Start with `sound-memory.exe --show` to open the devices window immediately.
 
 Use **Start with Windows** in the tray menu so the utility is running before
 your headset connects after a reboot.
@@ -116,14 +116,14 @@ Buttons: **Restore saved volumes**, **Open data folder**, **Open log**, and
 
 | Path | Purpose |
 | --- | --- |
-| `%LOCALAPPDATA%\bt-volume\devices.tsv` | remembered levels, plain tab-separated text |
-| `%LOCALAPPDATA%\bt-volume\bt-volume.log` | diagnostic log, rotated at 1 MB |
+| `%LOCALAPPDATA%\sound-memory\devices.tsv` | remembered levels, plain tab-separated text |
+| `%LOCALAPPDATA%\sound-memory\sound-memory.log` | diagnostic log, rotated at 1 MB |
 | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\BtVolume` | optional autostart entry |
 
 The store looks like this (level is `0..10000`, i.e. hundredths of a percent):
 
 ```text
-# bt-volume store v1 (level: 0..10000)
+# sound-memory store v1 (level: 0..10000)
 {0.0.0.00000000}.{...}	4200	Headphones (WH-1000XM4)
 ```
 
@@ -207,5 +207,5 @@ registering it.
 ## Uninstall
 
 Exit from the tray menu, remove the executable, optionally delete
-`%LOCALAPPDATA%\bt-volume`, and disable **Start with Windows** first if you
+`%LOCALAPPDATA%\sound-memory`, and disable **Start with Windows** first if you
 enabled it.

@@ -11,7 +11,7 @@ use windows::Win32::UI::WindowsAndMessaging::HICON;
 use crate::core::command::Notifier;
 use crate::core::util;
 
-pub(super) const TITLE: &str = "bt-volume";
+pub(super) const TITLE: &str = "sound-memory";
 pub(super) const CALLBACK_MESSAGE: u32 =
     windows::Win32::UI::WindowsAndMessaging::WM_APP + 1;
 

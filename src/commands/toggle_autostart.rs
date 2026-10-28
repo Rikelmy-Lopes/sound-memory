@@ -23,9 +23,9 @@ impl Command for ToggleAutostart {
         let enable = !autostart::is_enabled();
         match autostart::set_enabled(enable) {
             Ok(()) => ctx.notify(if enable {
-                "bt-volume will now start with Windows."
+                "sound-memory will now start with Windows."
             } else {
-                "bt-volume will no longer start with Windows."
+                "sound-memory will no longer start with Windows."
             }),
             Err(err) => ctx.notify_warning(format!(
                 "Could not change the startup setting: {err}"

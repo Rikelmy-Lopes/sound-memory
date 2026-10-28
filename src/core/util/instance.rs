@@ -11,7 +11,7 @@ use windows::Win32::System::Threading::CreateMutexW;
 pub fn acquire_single_instance() -> windows::core::Result<Option<HANDLE>> {
     unsafe {
         SetLastError(ERROR_SUCCESS);
-        let handle = CreateMutexW(None, true, w!("Local\\bt-volume-single-instance"))?;
+        let handle = CreateMutexW(None, true, w!("Local\\sound-memory-single-instance"))?;
         if GetLastError() == ERROR_ALREADY_EXISTS {
             Ok(None)
         } else {

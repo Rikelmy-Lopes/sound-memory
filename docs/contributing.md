@@ -1,4 +1,4 @@
-# Contributing to `bt-volume`
+# Contributing to `sound-memory`
 
 Thank you for your interest in improving this project! This document defines the process and standards for contributing code, documentation, and tests.
 

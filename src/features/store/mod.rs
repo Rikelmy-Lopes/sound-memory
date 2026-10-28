@@ -115,7 +115,7 @@ impl Store {
             return Ok(());
         }
 
-        let mut text = String::from("# bt-volume store v1 (level: 0..10000)\n");
+        let mut text = String::from("# sound-memory store v1 (level: 0..10000)\n");
         for (id, entry) in &self.entries {
             let _ = writeln!(
                 text,
@@ -161,7 +161,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let dir = std::env::temp_dir().join(format!(
-            "bt-volume-test-{}-{tag}-{nanos}",
+            "sound-memory-test-{}-{tag}-{nanos}",
             std::process::id()
         ));
         let path = dir.join("devices.tsv");
@@ -312,7 +312,7 @@ mod tests {
         assert!(!path.with_extension("tmp").exists());
 
         let text = std::fs::read_to_string(&path).unwrap();
-        assert!(text.starts_with("# bt-volume store v1"));
+        assert!(text.starts_with("# sound-memory store v1"));
         assert!(text.contains("id\t9600\tHeadset (联想)"));
 
         let reloaded = Store::load(path.clone());

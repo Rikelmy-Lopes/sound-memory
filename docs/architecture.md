@@ -1,6 +1,6 @@
 # Architecture Overview
 
-`bt-volume` is a native Windows system tray utility built in Rust. It remembers the volume level of every Bluetooth audio endpoint and restores it automatically upon reconnection.
+`sound-memory` is a native Windows system tray utility built in Rust. It remembers the volume level of every Bluetooth audio endpoint and restores it automatically upon reconnection.
 
 ## System Topology & Threads
 

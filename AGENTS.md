@@ -1,6 +1,6 @@
 # Agent Guidelines (`AGENTS.md`)
 
-Welcome, coding agent! This document outlines the standards, architecture principles, and constraints you must follow when working in the `bt-volume` codebase.
+Welcome, coding agent! This document outlines the standards, architecture principles, and constraints you must follow when working in the `sound-memory` codebase.
 
 ## Core Architecture
 

@@ -15,8 +15,8 @@ pub fn run() -> ExitCode {
         Ok(dir) => dir,
         Err(err) => {
             util::show_message(
-                &format!("bt-volume could not create its data folder:\n{err}"),
-                "bt-volume",
+                &format!("sound-memory could not create its data folder:\n{err}"),
+                "sound-memory",
                 true,
             );
             return ExitCode::FAILURE;
@@ -25,14 +25,14 @@ pub fn run() -> ExitCode {
 
     let log_file = util::log_path();
     util::init_logging(&log_file);
-    util::log("bt-volume starting");
+    util::log("sound-memory starting");
 
     let _instance = match util::acquire_single_instance() {
         Ok(Some(handle)) => Some(handle),
         Ok(None) => {
             util::show_message(
-                "bt-volume is already running.\n\nLook for its icon in the notification area.",
-                "bt-volume",
+                "sound-memory is already running.\n\nLook for its icon in the notification area.",
+                "sound-memory",
                 false,
             );
             return ExitCode::SUCCESS;
@@ -70,8 +70,8 @@ pub fn run() -> ExitCode {
         Err(err) => {
             util::log(&format!("could not start audio thread: {err}"));
             util::show_message(
-                &format!("bt-volume could not start its audio engine:\n{err}"),
-                "bt-volume",
+                &format!("sound-memory could not start its audio engine:\n{err}"),
+                "sound-memory",
                 true,
             );
             None
@@ -89,8 +89,8 @@ pub fn run() -> ExitCode {
             if let Err(err) = tray::run(tray_shared, tray_audio, tray_commands) {
                 util::log(&format!("tray failed: {err}"));
                 util::show_message(
-                    &format!("bt-volume could not create its tray icon:\n{err}"),
-                    "bt-volume",
+                    &format!("sound-memory could not create its tray icon:\n{err}"),
+                    "sound-memory",
                     true,
                 );
                 ui::request_exit();
@@ -118,6 +118,6 @@ pub fn run() -> ExitCode {
         let _ = engine.join();
     }
 
-    util::log("bt-volume stopped");
+    util::log("sound-memory stopped");
     ExitCode::SUCCESS
 }

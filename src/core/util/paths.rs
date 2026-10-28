@@ -4,13 +4,13 @@ use std::path::{Path, PathBuf};
 
 pub fn data_dir() -> PathBuf {
     match std::env::var_os("LOCALAPPDATA") {
-        Some(dir) => PathBuf::from(dir).join("bt-volume"),
-        None => std::env::temp_dir().join("bt-volume"),
+        Some(dir) => PathBuf::from(dir).join("sound-memory"),
+        None => std::env::temp_dir().join("sound-memory"),
     }
 }
 
 pub fn log_path() -> PathBuf {
-    data_dir().join("bt-volume.log")
+    data_dir().join("sound-memory.log")
 }
 
 pub fn ensure_data_dir() -> std::io::Result<PathBuf> {

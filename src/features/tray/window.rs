@@ -98,7 +98,7 @@ pub fn run(
         let hwnd = CreateWindowExW(
             WINDOW_EX_STYLE(0),
             class_name,
-            w!("bt-volume"),
+            w!("sound-memory"),
             WS_OVERLAPPED,
             0,
             0,
@@ -242,14 +242,14 @@ impl Ctx {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let tip = match devices.as_slice() {
-            [] => "bt-volume · waiting for Bluetooth audio".to_string(),
+            [] => "sound-memory · waiting for Bluetooth audio".to_string(),
             [one] => format!(
-                "bt-volume · {} · {}%",
+                "sound-memory · {} · {}%",
                 util::truncate(&one.name, 60),
                 one.level_pct
             ),
             many => format!(
-                "bt-volume · {} devices · {}%",
+                "sound-memory · {} devices · {}%",
                 many.len(),
                 many[0].level_pct
             ),

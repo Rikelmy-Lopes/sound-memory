@@ -78,9 +78,9 @@ mod tests {
 
     fn shared() -> Shared {
         Shared::new(
-            Store::load(std::env::temp_dir().join("bt-volume-state-test.tsv")),
+            Store::load(std::env::temp_dir().join("sound-memory-state-test.tsv")),
             std::env::temp_dir(),
-            std::env::temp_dir().join("bt-volume-state-test.log"),
+            std::env::temp_dir().join("sound-memory-state-test.log"),
         )
     }
 
