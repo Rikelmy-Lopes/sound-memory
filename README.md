@@ -10,8 +10,6 @@ service, no telemetry. The release executable is around 4.7 MB.
 
 [egui]: https://github.com/emilk/egui
 
-For an in-depth walkthrough of the internals (in Portuguese), see
-[`COMO-FUNCIONA.md`](COMO-FUNCIONA.md).
 
 ## What it does
 
