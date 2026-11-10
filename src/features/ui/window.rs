@@ -26,6 +26,8 @@ const BORDER: Color32 = Color32::from_rgb(0x2a, 0x33, 0x41);
 const TEXT: Color32 = Color32::from_rgb(0xe6, 0xea, 0xf1);
 const MUTED: Color32 = Color32::from_rgb(0x94, 0x9e, 0xae);
 const ACCENT: Color32 = Color32::from_rgb(0x60, 0xa5, 0xfa);
+const ACCENT_HOVER: Color32 = Color32::from_rgb(0x83, 0xbb, 0xfc);
+const ACCENT_ACTIVE: Color32 = Color32::from_rgb(0x3b, 0x82, 0xd4);
 const GREEN: Color32 = Color32::from_rgb(0x4a, 0xde, 0x80);
 
 /// Saved percentage plus the live percentage when the device is connected.
@@ -199,12 +201,20 @@ fn card_frame() -> egui::Frame {
         .inner_margin(Margin::same(16))
 }
 
-fn stat_card(ui: &mut egui::Ui, width: f32, label: &str, value: &str, accent: Color32) {
+fn stat_card(
+    ui: &mut egui::Ui,
+    width: f32,
+    label: &str,
+    value: &str,
+    accent: Color32,
+    value_size: f32,
+) {
     card_frame().inner_margin(Margin::same(14)).show(ui, |ui| {
         ui.set_width((width - 28.0).max(60.0));
+        ui.set_min_height(42.0);
         ui.label(RichText::new(label).size(11.0).strong().color(MUTED));
         ui.add_space(3.0);
-        ui.label(RichText::new(value).size(21.0).strong().color(accent));
+        ui.label(RichText::new(value).size(value_size).strong().color(accent));
     });
 }
 
@@ -220,23 +230,41 @@ fn pill(ui: &mut egui::Ui, text: &str, color: Color32) {
 }
 
 fn primary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
-    ui.add(
-        egui::Button::new(
-            RichText::new(text)
-                .strong()
-                .color(Color32::from_rgb(0x08, 0x11, 0x1e)),
+    let ink = Color32::from_rgb(0x08, 0x11, 0x1e);
+
+    ui.scope(|ui| {
+        {
+            let widgets = &mut ui.style_mut().visuals.widgets;
+            widgets.inactive.bg_fill = ACCENT;
+            widgets.inactive.weak_bg_fill = ACCENT;
+            widgets.inactive.bg_stroke = Stroke::new(1.0, ACCENT);
+            widgets.inactive.fg_stroke = Stroke::new(1.0, ink);
+
+            widgets.hovered.bg_fill = ACCENT_HOVER;
+            widgets.hovered.weak_bg_fill = ACCENT_HOVER;
+            widgets.hovered.bg_stroke = Stroke::new(1.0, ACCENT_HOVER);
+            widgets.hovered.fg_stroke = Stroke::new(1.0, ink);
+
+            widgets.active.bg_fill = ACCENT_ACTIVE;
+            widgets.active.weak_bg_fill = ACCENT_ACTIVE;
+            widgets.active.bg_stroke = Stroke::new(1.0, ACCENT_ACTIVE);
+            widgets.active.fg_stroke = Stroke::new(1.0, ink);
+        }
+
+        ui.add(
+            egui::Button::new(RichText::new(text).strong())
+                .frame(true)
+                .corner_radius(CornerRadius::same(8))
+                .min_size(egui::vec2(0.0, 33.0)),
         )
-        .fill(ACCENT)
-        .corner_radius(CornerRadius::same(8))
-        .min_size(egui::vec2(0.0, 33.0)),
-    )
+    })
+    .inner
 }
 
 fn secondary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
     ui.add(
         egui::Button::new(RichText::new(text).color(TEXT))
-            .fill(CARD)
-            .stroke(Stroke::new(1.0, BORDER))
+            .frame(true)
             .corner_radius(CornerRadius::same(8))
             .min_size(egui::vec2(0.0, 33.0)),
     )
@@ -326,16 +354,17 @@ impl eframe::App for DevicesUi {
 
                 let gap = ui.spacing().item_spacing.x;
                 let card_width = ((ui.available_width() - gap * 2.0) / 3.0).max(120.0);
-                ui.horizontal(|ui| {
+                ui.horizontal_top(|ui| {
                     stat_card(
                         ui,
                         card_width,
                         "SAVED DEVICES",
                         &saved.len().to_string(),
                         ACCENT,
+                        21.0,
                     );
-                    stat_card(ui, card_width, "CONNECTED", &live.to_string(), GREEN);
-                    stat_card(ui, card_width, "SAVE FILE", "devices.json", MUTED);
+                    stat_card(ui, card_width, "CONNECTED", &live.to_string(), GREEN, 21.0);
+                    stat_card(ui, card_width, "SAVE FILE", "devices.json", MUTED, 16.0);
                 });
 
                 ui.add_space(14.0);
