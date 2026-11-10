@@ -1,6 +1,6 @@
 # Architecture Overview
 
-`sound-memory` is a native Windows system tray utility built in Rust. It remembers the volume level of every Bluetooth audio endpoint and restores it automatically upon reconnection.
+`Sound Memory` is a native Windows system tray utility built in Rust. It remembers the volume level of every Bluetooth audio endpoint and restores it automatically upon reconnection.
 
 ## System Topology & Threads
 
@@ -12,7 +12,7 @@ The application runs three primary concurrent threads:
    - When closed, the window is destroyed, returning the process to a lightweight tray-only state without an OpenGL context.
 
 2. **Tray Thread**:
-   - Creates a hidden Win32 message-only window (`BtVolumeTrayWindow`).
+   - Creates a hidden Win32 message-only window (`SoundMemoryTrayWindow`).
    - Registers the notification icon via `Shell_NotifyIconW`.
    - Dispatches context menu interactions and balloon notifications.
 
@@ -52,6 +52,6 @@ src/
     audio/            Core Audio engine, endpoints, callbacks, policies
     tray/             Notification icon, hidden window, context menu
     ui/               egui devices window and fallback CJK fonts
-    store/            Persistent TSV volume store and scale conversions
+    store/            Persistent JSON volume store and scale conversions
     autostart/        Registry-based HKCU Run key integration
 ```

@@ -15,24 +15,26 @@ pub fn run() -> ExitCode {
         Ok(dir) => dir,
         Err(err) => {
             util::show_message(
-                &format!("sound-memory could not create its data folder:\n{err}"),
-                "sound-memory",
+                &format!("Sound Memory could not create its data folder:\n{err}"),
+                "Sound Memory",
                 true,
             );
             return ExitCode::FAILURE;
         }
     };
 
+    util::migrate_legacy_data(&data_dir);
+
     let log_file = util::log_path();
     util::init_logging(&log_file);
-    util::log("sound-memory starting");
+    util::log("Sound Memory starting");
 
     let _instance = match util::acquire_single_instance() {
         Ok(Some(handle)) => Some(handle),
         Ok(None) => {
             util::show_message(
-                "sound-memory is already running.\n\nLook for its icon in the notification area.",
-                "sound-memory",
+                "Sound Memory is already running.\n\nLook for its icon in the notification area.",
+                "Sound Memory",
                 false,
             );
             return ExitCode::SUCCESS;
@@ -54,11 +56,7 @@ pub fn run() -> ExitCode {
 
     let (audio_tx, audio_rx) = mpsc::channel::<AudioRequest>();
     // The UI channel exists before the tray starts, so the first click is never lost.
-    ui::init(
-        Arc::clone(&shared),
-        audio_tx.clone(),
-        Arc::clone(&registry),
-    );
+    ui::init(Arc::clone(&shared), audio_tx.clone(), Arc::clone(&registry));
 
     let engine_shared = Arc::clone(&shared);
     let engine = std::thread::Builder::new()
@@ -70,8 +68,8 @@ pub fn run() -> ExitCode {
         Err(err) => {
             util::log(&format!("could not start audio thread: {err}"));
             util::show_message(
-                &format!("sound-memory could not start its audio engine:\n{err}"),
-                "sound-memory",
+                &format!("Sound Memory could not start its audio engine:\n{err}"),
+                "Sound Memory",
                 true,
             );
             None
@@ -89,8 +87,8 @@ pub fn run() -> ExitCode {
             if let Err(err) = tray::run(tray_shared, tray_audio, tray_commands) {
                 util::log(&format!("tray failed: {err}"));
                 util::show_message(
-                    &format!("sound-memory could not create its tray icon:\n{err}"),
-                    "sound-memory",
+                    &format!("Sound Memory could not create its tray icon:\n{err}"),
+                    "Sound Memory",
                     true,
                 );
                 ui::request_exit();
@@ -118,6 +116,6 @@ pub fn run() -> ExitCode {
         let _ = engine.join();
     }
 
-    util::log("sound-memory stopped");
+    util::log("Sound Memory stopped");
     ExitCode::SUCCESS
 }

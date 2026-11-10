@@ -1,12 +1,12 @@
-//! The devices window itself: table of saved and live levels plus command
-//! buttons.
+//! The devices window itself: a compact dashboard with saved and live levels
+//! plus command buttons.
 
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::Duration;
 
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, Align, Color32, CornerRadius, Layout, Margin, RichText, Stroke};
 
 use super::fonts;
 use super::{AUDIO, COMMANDS, CONTEXT, OPEN, SHARED, UNAVAILABLE};
@@ -17,7 +17,16 @@ use crate::core::util;
 use crate::features::audio::AudioRequest;
 use crate::features::store;
 
-const WINDOW_TITLE: &str = "sound-memory · devices";
+const WINDOW_TITLE: &str = "Sound Memory";
+
+const BG: Color32 = Color32::from_rgb(0x0d, 0x11, 0x17);
+const CARD: Color32 = Color32::from_rgb(0x17, 0x1d, 0x27);
+const CARD_HOVER: Color32 = Color32::from_rgb(0x21, 0x29, 0x36);
+const BORDER: Color32 = Color32::from_rgb(0x2a, 0x33, 0x41);
+const TEXT: Color32 = Color32::from_rgb(0xe6, 0xea, 0xf1);
+const MUTED: Color32 = Color32::from_rgb(0x94, 0x9e, 0xae);
+const ACCENT: Color32 = Color32::from_rgb(0x60, 0xa5, 0xfa);
+const GREEN: Color32 = Color32::from_rgb(0x4a, 0xde, 0x80);
 
 /// Saved percentage plus the live percentage when the device is connected.
 fn row_for(device: &SavedDevice, connected: &[DeviceStatus]) -> (u32, Option<u32>) {
@@ -30,8 +39,7 @@ fn row_for(device: &SavedDevice, connected: &[DeviceStatus]) -> (u32, Option<u32
 }
 
 pub(super) fn run_window() {
-    let (Some(shared), Some(audio), Some(commands)) =
-        (SHARED.get(), AUDIO.get(), COMMANDS.get())
+    let (Some(shared), Some(audio), Some(commands)) = (SHARED.get(), AUDIO.get(), COMMANDS.get())
     else {
         return;
     };
@@ -41,10 +49,10 @@ pub(super) fn run_window() {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_app_id("sound-memory")
+            .with_app_id("Sound Memory")
             .with_title(WINDOW_TITLE)
-            .with_inner_size([620.0, 420.0])
-            .with_min_inner_size([420.0, 240.0]),
+            .with_inner_size([760.0, 560.0])
+            .with_min_inner_size([520.0, 340.0]),
         ..Default::default()
     };
 
@@ -64,8 +72,8 @@ pub(super) fn run_window() {
         UNAVAILABLE.store(true, Ordering::SeqCst);
         util::log(&format!("devices window failed: {err}"));
         util::show_message(
-            &format!("sound-memory could not create its devices window:\n{err}"),
-            "sound-memory",
+            &format!("Sound Memory could not create its devices window:\n{err}"),
+            "Sound Memory",
             true,
         );
     }
@@ -88,6 +96,8 @@ impl DevicesUi {
         if let Ok(mut slot) = CONTEXT.lock() {
             *slot = Some(cc.egui_ctx.clone());
         }
+
+        apply_theme(&cc.egui_ctx);
 
         let mut app = Self {
             shared,
@@ -137,92 +147,255 @@ impl DevicesUi {
     }
 }
 
+fn apply_theme(ctx: &egui::Context) {
+    ctx.set_theme(egui::Theme::Dark);
+    let mut style = (*ctx.style_of(egui::Theme::Dark)).clone();
+    style.visuals = egui::Visuals::dark();
+    style.visuals.panel_fill = BG;
+    style.visuals.window_fill = BG;
+    style.visuals.extreme_bg_color = CARD;
+    style.visuals.faint_bg_color = CARD;
+    style.visuals.override_text_color = Some(TEXT);
+    style.visuals.selection.bg_fill = ACCENT.gamma_multiply(0.45);
+    style.visuals.selection.stroke = Stroke::new(1.0, TEXT);
+
+    let widgets = &mut style.visuals.widgets;
+    widgets.noninteractive.corner_radius = CornerRadius::same(8);
+    widgets.noninteractive.bg_fill = CARD;
+    widgets.noninteractive.weak_bg_fill = CARD;
+    widgets.noninteractive.bg_stroke = Stroke::new(1.0, BORDER);
+    widgets.noninteractive.fg_stroke = Stroke::new(1.0, MUTED);
+
+    widgets.inactive.corner_radius = CornerRadius::same(8);
+    widgets.inactive.bg_fill = CARD;
+    widgets.inactive.weak_bg_fill = CARD;
+    widgets.inactive.bg_stroke = Stroke::new(1.0, BORDER);
+    widgets.inactive.fg_stroke = Stroke::new(1.0, TEXT);
+
+    widgets.hovered.corner_radius = CornerRadius::same(8);
+    widgets.hovered.bg_fill = CARD_HOVER;
+    widgets.hovered.weak_bg_fill = CARD_HOVER;
+    widgets.hovered.bg_stroke = Stroke::new(1.0, ACCENT.gamma_multiply(0.6));
+    widgets.hovered.fg_stroke = Stroke::new(1.0, Color32::WHITE);
+
+    widgets.active.corner_radius = CornerRadius::same(8);
+    widgets.active.bg_fill = ACCENT;
+    widgets.active.weak_bg_fill = ACCENT;
+    widgets.active.bg_stroke = Stroke::new(1.0, ACCENT);
+    widgets.active.fg_stroke = Stroke::new(1.0, Color32::BLACK);
+
+    style.spacing.item_spacing = egui::vec2(10.0, 10.0);
+    style.spacing.button_padding = egui::vec2(14.0, 8.0);
+    style.spacing.interact_size.y = 30.0;
+
+    ctx.set_style_of(egui::Theme::Dark, style);
+}
+
+fn card_frame() -> egui::Frame {
+    egui::Frame::new()
+        .fill(CARD)
+        .stroke(Stroke::new(1.0, BORDER))
+        .corner_radius(CornerRadius::same(12))
+        .inner_margin(Margin::same(16))
+}
+
+fn stat_card(ui: &mut egui::Ui, width: f32, label: &str, value: &str, accent: Color32) {
+    card_frame().inner_margin(Margin::same(14)).show(ui, |ui| {
+        ui.set_width((width - 28.0).max(60.0));
+        ui.label(RichText::new(label).size(11.0).strong().color(MUTED));
+        ui.add_space(3.0);
+        ui.label(RichText::new(value).size(21.0).strong().color(accent));
+    });
+}
+
+fn pill(ui: &mut egui::Ui, text: &str, color: Color32) {
+    let fill = Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 34);
+    egui::Frame::new()
+        .fill(fill)
+        .corner_radius(CornerRadius::same(10))
+        .inner_margin(Margin::symmetric(9, 3))
+        .show(ui, |ui| {
+            ui.label(RichText::new(text).size(11.0).strong().color(color));
+        });
+}
+
+fn primary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
+    ui.add(
+        egui::Button::new(
+            RichText::new(text)
+                .strong()
+                .color(Color32::from_rgb(0x08, 0x11, 0x1e)),
+        )
+        .fill(ACCENT)
+        .corner_radius(CornerRadius::same(8))
+        .min_size(egui::vec2(0.0, 33.0)),
+    )
+}
+
+fn secondary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
+    ui.add(
+        egui::Button::new(RichText::new(text).color(TEXT))
+            .fill(CARD)
+            .stroke(Stroke::new(1.0, BORDER))
+            .corner_radius(CornerRadius::same(8))
+            .min_size(egui::vec2(0.0, 33.0)),
+    )
+}
+
+fn device_card(ui: &mut egui::Ui, device: &SavedDevice, saved_pct: u32, now_pct: Option<u32>) {
+    card_frame().inner_margin(Margin::same(14)).show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(
+                RichText::new(util::truncate(&device.name, 44))
+                    .size(15.0)
+                    .strong()
+                    .color(TEXT),
+            )
+            .on_hover_text(format!("{}\n{}", device.name, device.id));
+
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| match now_pct {
+                Some(now) => pill(ui, &format!("Connected · {now}%"), GREEN),
+                None => pill(ui, "Saved", MUTED),
+            });
+        });
+
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label(
+                RichText::new(format!("Saved level {saved_pct}%"))
+                    .size(12.0)
+                    .color(MUTED),
+            );
+            if let Some(now) = now_pct {
+                ui.label(
+                    RichText::new(format!("Current {now}%"))
+                        .size(12.0)
+                        .color(GREEN),
+                );
+            }
+        });
+
+        ui.add_space(6.0);
+        ui.add(
+            egui::ProgressBar::new(saved_pct as f32 / 100.0)
+                .desired_width(ui.available_width())
+                .desired_height(7.0)
+                .corner_radius(CornerRadius::same(4))
+                .fill(if now_pct.is_some() { GREEN } else { ACCENT }),
+        );
+    });
+}
+
 impl eframe::App for DevicesUi {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         ctx.request_repaint_after(Duration::from_millis(250));
         self.load_fonts_if_needed(&ctx);
 
-        egui::CentralPanel::default().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Bluetooth volumes");
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("Hide").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(BG).inner_margin(Margin::same(20)))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.label(
+                            RichText::new("Sound Memory")
+                                .size(26.0)
+                                .strong()
+                                .color(TEXT),
+                        );
+                        ui.label(
+                            RichText::new("Bluetooth volume memory")
+                                .size(12.0)
+                                .color(MUTED),
+                        );
+                    });
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if secondary_button(ui, "Hide").clicked() {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                    });
+                });
+
+                ui.add_space(14.0);
+
+                let (saved, connected) = self.snapshot();
+                let live = saved
+                    .iter()
+                    .filter(|device| row_for(device, &connected).1.is_some())
+                    .count();
+
+                let gap = ui.spacing().item_spacing.x;
+                let card_width = ((ui.available_width() - gap * 2.0) / 3.0).max(120.0);
+                ui.horizontal(|ui| {
+                    stat_card(
+                        ui,
+                        card_width,
+                        "SAVED DEVICES",
+                        &saved.len().to_string(),
+                        ACCENT,
+                    );
+                    stat_card(ui, card_width, "CONNECTED", &live.to_string(), GREEN);
+                    stat_card(ui, card_width, "SAVE FILE", "devices.json", MUTED);
+                });
+
+                ui.add_space(14.0);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Devices").size(16.0).strong().color(TEXT));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if primary_button(ui, "Restore all").clicked() {
+                            self.execute(ids::RESTORE_ALL);
+                        }
+                    });
+                });
+
+                ui.add_space(6.0);
+
+                let list_height = (ui.available_height() - 54.0).max(100.0);
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .max_height(list_height)
+                    .show(ui, |ui| {
+                        if saved.is_empty() {
+                            card_frame().inner_margin(Margin::same(24)).show(ui, |ui| {
+                                ui.set_width(ui.available_width());
+                                ui.vertical_centered(|ui| {
+                                    ui.label(
+                                        RichText::new("No devices recorded yet")
+                                            .size(17.0)
+                                            .strong()
+                                            .color(TEXT),
+                                    );
+                                    ui.add_space(4.0);
+                                    ui.label(
+                                        RichText::new(
+                                            "Connect a Bluetooth headset once. Its current \
+                                                 volume will be saved and restored the next time \
+                                                 it connects.",
+                                        )
+                                        .size(12.5)
+                                        .color(MUTED),
+                                    );
+                                });
+                            });
+                        } else {
+                            for device in &saved {
+                                let (saved_pct, now_pct) = row_for(device, &connected);
+                                device_card(ui, device, saved_pct, now_pct);
+                            }
+                        }
+                    });
+
+                ui.add_space(6.0);
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if secondary_button(ui, "Open data folder").clicked() {
+                        self.execute(ids::OPEN_DATA_FOLDER);
+                    }
+                    if secondary_button(ui, "Open log").clicked() {
+                        self.execute(ids::OPEN_LOG_FILE);
                     }
                 });
             });
-            ui.label(
-                RichText::new("One saved level per Bluetooth audio endpoint.")
-                    .weak()
-                    .small(),
-            );
-            ui.add_space(8.0);
-
-            let (saved, connected) = self.snapshot();
-
-            if saved.is_empty() {
-                ui.label(
-                    "No device recorded yet. Connect a Bluetooth headset once and its current \
-                     volume will be remembered.",
-                );
-            } else {
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .max_height(ui.available_height() - 44.0)
-                    .show(ui, |ui| {
-                        egui::Grid::new("saved-devices")
-                            .num_columns(4)
-                            .striped(true)
-                            .spacing([14.0, 6.0])
-                            .min_col_width(70.0)
-                            .show(ui, |ui| {
-                                ui.label(RichText::new("Device").strong());
-                                ui.label(RichText::new("Saved").strong());
-                                ui.label(RichText::new("Now").strong());
-                                ui.label(RichText::new("State").strong());
-                                ui.end_row();
-
-                                for device in &saved {
-                                    let (saved_pct, now_pct) = row_for(device, &connected);
-
-                                    ui.label(util::truncate(&device.name, 38))
-                                        .on_hover_text(format!("{}\n{}", device.name, device.id));
-
-                                    ui.label(format!("{saved_pct}%"));
-
-                                    match now_pct {
-                                        Some(now_pct) => {
-                                            ui.label(format!("{now_pct}%"));
-                                            ui.label(
-                                                RichText::new("connected")
-                                                    .color(Color32::from_rgb(0x4c, 0xaf, 0x50)),
-                                            );
-                                        }
-                                        None => {
-                                            ui.label(RichText::new("—").weak());
-                                            ui.label(RichText::new("saved").weak());
-                                        }
-                                    }
-                                    ui.end_row();
-                                }
-                            });
-                    });
-            }
-
-            ui.separator();
-            ui.horizontal(|ui| {
-                if ui.button("Restore saved volumes").clicked() {
-                    self.execute(ids::RESTORE_ALL);
-                }
-                if ui.button("Open data folder").clicked() {
-                    self.execute(ids::OPEN_DATA_FOLDER);
-                }
-                if ui.button("Open log").clicked() {
-                    self.execute(ids::OPEN_LOG_FILE);
-                }
-            });
-        });
     }
 }
 

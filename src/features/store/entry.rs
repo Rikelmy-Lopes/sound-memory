@@ -6,8 +6,8 @@ pub struct Entry {
     pub level: u32,
 }
 
-/// Device names come from Windows and may contain separators used by the file
-/// format, so tabs and line breaks are neutralised before writing.
+/// Device names come from Windows and may contain control characters, so tabs
+/// and line breaks are neutralised to keep names tidy in the window and tray.
 pub(super) fn clean_name(name: &str) -> String {
     let cleaned: String = name
         .chars()

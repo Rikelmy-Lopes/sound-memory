@@ -30,7 +30,10 @@ pub fn init_logging(path: &Path) {
         Ok(file) => {
             let _ = LOG.set(Mutex::new(file));
         }
-        Err(err) => eprintln!("sound-memory: cannot open log file {}: {err}", path.display()),
+        Err(err) => eprintln!(
+            "Sound Memory: cannot open log file {}: {err}",
+            path.display()
+        ),
     }
 }
 

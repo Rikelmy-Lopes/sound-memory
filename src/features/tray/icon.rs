@@ -11,9 +11,8 @@ use windows::Win32::UI::WindowsAndMessaging::HICON;
 use crate::core::command::Notifier;
 use crate::core::util;
 
-pub(super) const TITLE: &str = "sound-memory";
-pub(super) const CALLBACK_MESSAGE: u32 =
-    windows::Win32::UI::WindowsAndMessaging::WM_APP + 1;
+pub(super) const TITLE: &str = "Sound Memory";
+pub(super) const CALLBACK_MESSAGE: u32 = windows::Win32::UI::WindowsAndMessaging::WM_APP + 1;
 
 pub(super) fn make_icon_data(hwnd: HWND, icon: HICON) -> NOTIFYICONDATAW {
     let mut nid = NOTIFYICONDATAW {

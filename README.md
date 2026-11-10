@@ -1,6 +1,6 @@
-# sound-memory
+# Sound Memory
 
-A small, native Windows tray utility that remembers the volume level of every
+Sound Memory is a small, native Windows tray utility that remembers the volume level of every
 Bluetooth audio device you use and restores it automatically when that device
 connects again.
 
@@ -66,17 +66,15 @@ Only one instance runs at a time.
 
 The window is built with egui and only exists while it is open: it is created on
 demand on the main thread, and closing it returns to a tray-only process. It
-lists every endpoint in `devices.tsv` with:
+shows a dark dashboard with a card per endpoint in `devices.json`:
 
-| Column | Meaning |
-| --- | --- |
-| Device | friendly name; hover to see the full name and endpoint id |
-| Saved | level that will be restored on the next connection |
-| Now | current level, when the device is connected |
-| State | `connected` or `saved` |
+- **Device** - friendly name; hover to see the full name and endpoint id.
+- **Saved** - level that will be restored on the next connection, with a progress bar.
+- **Now** - current level, when the device is connected.
+- **State** - `Connected` or `Saved`.
 
-Buttons: **Restore saved volumes**, **Open data folder**, **Open log**, and
-**Hide** (closes the window without stopping the program).
+Buttons: **Restore all**, **Open data folder**, **Open log**, and **Hide**
+(closes the window without stopping the program).
 
 ## How it works
 
@@ -104,7 +102,7 @@ Buttons: **Restore saved volumes**, **Open data folder**, **Open log**, and
 
 | Module | Covered behaviour |
 | --- | --- |
-| `features::store` | TSV parsing, malformed lines, clamping, name defaults/sanitising, change detection, id and name lookup, ambiguity, id migration, atomic flush round-trip, unit conversions |
+| `features::store` | JSON parsing, legacy TSV fallback, malformed records, clamping, name defaults/sanitising, change detection, id and name lookup, ambiguity, id migration, atomic flush round-trip, unit conversions |
 | `features::audio::policy` | Bluetooth endpoint detection (including the empty instance id case), retry schedule, grace window decisions |
 | `commands` | every feature is registered, command ids are unique |
 | `core::command` | registry lookup and execution by id |
@@ -116,16 +114,27 @@ Buttons: **Restore saved volumes**, **Open data folder**, **Open log**, and
 
 | Path | Purpose |
 | --- | --- |
-| `%LOCALAPPDATA%\sound-memory\devices.tsv` | remembered levels, plain tab-separated text |
-| `%LOCALAPPDATA%\sound-memory\sound-memory.log` | diagnostic log, rotated at 1 MB |
-| `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\BtVolume` | optional autostart entry |
+| `%LOCALAPPDATA%\Sound Memory\devices.json` | remembered levels, pretty-printed JSON |
+| `%LOCALAPPDATA%\Sound Memory\Sound Memory.log` | diagnostic log, rotated at 1 MB |
+| `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Sound Memory` | optional autostart entry |
 
 The store looks like this (level is `0..10000`, i.e. hundredths of a percent):
 
-```text
-# sound-memory store v1 (level: 0..10000)
-{0.0.0.00000000}.{...}	4200	Headphones (WH-1000XM4)
+```json
+{
+  "version": 1,
+  "devices": [
+    {
+      "id": "{0.0.0.00000000}.{...}",
+      "name": "Headphones (WH-1000XM4)",
+      "level": 4200
+    }
+  ]
+}
 ```
+
+Older tab-separated files are still accepted when loading, then rewritten as JSON
+on the next change.
 
 ### Limitations and fine print
 
@@ -186,7 +195,7 @@ src/
       window.rs       devices table and command buttons
       fonts.rs        CJK fallback fonts
     store/
-      mod.rs          persistent TSV store
+      mod.rs          persistent JSON store
       entry.rs        one stored record
       units.rs        scalar <-> hundredths-of-a-percent conversions
     autostart/
@@ -207,5 +216,5 @@ registering it.
 ## Uninstall
 
 Exit from the tray menu, remove the executable, optionally delete
-`%LOCALAPPDATA%\sound-memory`, and disable **Start with Windows** first if you
+`%LOCALAPPDATA%\Sound Memory`, and disable **Start with Windows** first if you
 enabled it.

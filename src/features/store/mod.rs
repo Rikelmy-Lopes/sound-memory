@@ -1,21 +1,46 @@
 //! Tiny persistent volume store.
 //!
-//! The format is deliberately simple (tab separated text) so the program needs no
-//! serialization crate.  A record is keyed by the audio endpoint id, which Windows
-//! keeps stable for the lifetime of a paired Bluetooth device.
+//! Records are written as JSON so the file is easy to inspect and edit.  A
+//! record is keyed by the audio endpoint id, which Windows keeps stable for the
+//! lifetime of a paired Bluetooth device.
+//!
+//! Older releases used a tab separated file; [`Store::load`] still accepts that
+//! format as a fallback so saved levels survive an upgrade.
 
 mod entry;
 mod units;
 
 use std::collections::BTreeMap;
-use std::fmt::Write;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
+
+use serde::{Deserialize, Serialize};
 
 pub use entry::Entry;
 pub use units::{percent, scalar_from_units, units_from_scalar, UNITS};
 
 use entry::clean_name;
+
+const STORE_VERSION: u32 = 1;
+const DEFAULT_NAME: &str = "Bluetooth audio device";
+
+#[derive(Serialize, Deserialize)]
+struct StoreFile {
+    #[serde(default)]
+    version: u32,
+    #[serde(default)]
+    devices: Vec<Record>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Record {
+    id: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    level: u32,
+}
 
 pub struct Store {
     path: PathBuf,
@@ -35,31 +60,28 @@ impl Store {
             return store;
         };
 
-        for line in text.lines() {
-            if line.is_empty() || line.starts_with('#') {
+        // A corrupt or old file must not stop the program: fall back to the
+        // legacy tab separated parser and keep whatever it can understand.
+        let records = match serde_json::from_str::<StoreFile>(&text) {
+            Ok(file) => file.devices,
+            Err(_) => parse_legacy(&text),
+        };
+
+        for record in records {
+            let id = record.id.trim();
+            if id.is_empty() {
                 continue;
             }
-            let mut parts = line.splitn(3, '\t');
-            let (Some(id), Some(level), Some(name)) = (parts.next(), parts.next(), parts.next())
-            else {
-                continue;
-            };
-            let Ok(level) = level.trim().parse::<u32>() else {
-                continue;
-            };
-            let name = name.trim();
-            if id.trim().is_empty() {
-                continue;
-            }
+            let name = record.name.trim();
             store.entries.insert(
                 id.to_string(),
                 Entry {
                     name: if name.is_empty() {
-                        "Bluetooth audio device".to_string()
+                        DEFAULT_NAME.to_string()
                     } else {
                         name.to_string()
                     },
-                    level: level.min(UNITS),
+                    level: record.level.min(UNITS),
                 },
             );
         }
@@ -110,21 +132,27 @@ impl Store {
         self.dirty = true;
     }
 
-    pub fn flush(&mut self) -> std::io::Result<()> {
+    pub fn flush(&mut self) -> io::Result<()> {
         if !self.dirty {
             return Ok(());
         }
 
-        let mut text = String::from("# sound-memory store v1 (level: 0..10000)\n");
-        for (id, entry) in &self.entries {
-            let _ = writeln!(
-                text,
-                "{}\t{}\t{}",
-                id.replace(['\t', '\r', '\n'], " "),
-                entry.level,
-                clean_name(&entry.name)
-            );
-        }
+        let file = StoreFile {
+            version: STORE_VERSION,
+            devices: self
+                .entries
+                .iter()
+                .map(|(id, entry)| Record {
+                    id: id.clone(),
+                    name: clean_name(&entry.name),
+                    level: entry.level,
+                })
+                .collect(),
+        };
+
+        let mut text = serde_json::to_string_pretty(&file)
+            .map_err(io::Error::other)?;
+        text.push('\n');
 
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
@@ -147,8 +175,31 @@ impl Store {
     }
 }
 
+/// Parses the tab separated format used before the JSON migration.
+fn parse_legacy(text: &str) -> Vec<Record> {
+    let mut records = Vec::new();
+    for line in text.lines() {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut parts = line.splitn(3, '\t');
+        let (Some(id), Some(level), Some(name)) = (parts.next(), parts.next(), parts.next()) else {
+            continue;
+        };
+        let Ok(level) = level.trim().parse::<u32>() else {
+            continue;
+        };
+        records.push(Record {
+            id: id.to_string(),
+            name: name.to_string(),
+            level,
+        });
+    }
+    records
+}
+
 pub fn default_path(dir: &Path) -> PathBuf {
-    dir.join("devices.tsv")
+    dir.join("devices.json")
 }
 
 #[cfg(test)]
@@ -164,7 +215,7 @@ mod tests {
             "sound-memory-test-{}-{tag}-{nanos}",
             std::process::id()
         ));
-        let path = dir.join("devices.tsv");
+        let path = dir.join("devices.json");
         std::fs::create_dir_all(&dir).unwrap();
         let store = Store::load(path.clone());
         (dir, store)
@@ -173,11 +224,19 @@ mod tests {
     #[test]
     fn parses_well_formed_records() {
         let (dir, _) = temp_store("parse");
-        let path = dir.join("devices.tsv");
+        let path = dir.join("devices.json");
         std::fs::write(
             &path,
-            "# comment\n\
-             {0.0.0.00000000}.{id}	9600	Headset (联想)\n",
+            r#"{
+                "version": 1,
+                "devices": [
+                    {
+                        "id": "{0.0.0.00000000}.{id}",
+                        "name": "Headset (联想)",
+                        "level": 9600
+                    }
+                ]
+            }"#,
         )
         .unwrap();
 
@@ -191,17 +250,12 @@ mod tests {
     }
 
     #[test]
-    fn skips_comments_blanks_and_malformed_lines() {
+    fn skips_records_without_an_id() {
         let (dir, _) = temp_store("malformed");
-        let path = dir.join("devices.tsv");
+        let path = dir.join("devices.json");
         std::fs::write(
             &path,
-            "# header\n\
-             \n\
-             only-one-field\n\
-             id\tnot-a-number\tname\n\
-             \t500\tno id\n\
-             id\t500\tname\n",
+            r#"{"version":1,"devices":[{"id":"","level":500},{"id":"id","name":"name","level":500}]}"#,
         )
         .unwrap();
 
@@ -212,10 +266,26 @@ mod tests {
     }
 
     #[test]
+    fn load_accepts_the_legacy_tsv_format() {
+        let (dir, _) = temp_store("legacy");
+        let path = dir.join("devices.json");
+        std::fs::write(&path, "id\t9600\tHeadset\nother\tnot-a-number\tbad\n").unwrap();
+
+        let store = Store::load(path);
+        assert_eq!(store.len(), 1);
+        assert_eq!(store.list().next().unwrap().1.name, "Headset");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn clamps_out_of_range_levels() {
         let (dir, _) = temp_store("clamp-load");
-        let path = dir.join("devices.tsv");
-        std::fs::write(&path, "id\t99999\tloud\n").unwrap();
+        let path = dir.join("devices.json");
+        std::fs::write(
+            &path,
+            r#"{"version":1,"devices":[{"id":"id","name":"loud","level":99999}]}"#,
+        )
+        .unwrap();
 
         let store = Store::load(path);
         assert_eq!(store.list().next().unwrap().1.level, UNITS);
@@ -229,8 +299,12 @@ mod tests {
     #[test]
     fn defaults_empty_names() {
         let (dir, _) = temp_store("names");
-        let path = dir.join("devices.tsv");
-        std::fs::write(&path, "id\t100\t\n").unwrap();
+        let path = dir.join("devices.json");
+        std::fs::write(
+            &path,
+            r#"{"version":1,"devices":[{"id":"id","level":100}]}"#,
+        )
+        .unwrap();
 
         let store = Store::load(path);
         assert_eq!(
@@ -304,7 +378,7 @@ mod tests {
     #[test]
     fn flush_round_trips_utf8_and_leaves_no_temp_file() {
         let (dir, mut store) = temp_store("flush");
-        let path = dir.join("devices.tsv");
+        let path = dir.join("devices.json");
         store.set("id", "Headset (联想)", 9600);
         store.flush().unwrap();
 
@@ -312,8 +386,9 @@ mod tests {
         assert!(!path.with_extension("tmp").exists());
 
         let text = std::fs::read_to_string(&path).unwrap();
-        assert!(text.starts_with("# sound-memory store v1"));
-        assert!(text.contains("id\t9600\tHeadset (联想)"));
+        assert!(text.starts_with('{'));
+        assert!(text.contains("\"version\": 1"));
+        assert!(text.contains("\"name\": \"Headset (联想)\""));
 
         let reloaded = Store::load(path.clone());
         assert_eq!(reloaded.len(), 1);
@@ -326,7 +401,7 @@ mod tests {
     fn flush_without_changes_writes_nothing() {
         let (dir, mut store) = temp_store("flush-clean");
         store.flush().unwrap();
-        assert!(!dir.join("devices.tsv").exists());
+        assert!(!dir.join("devices.json").exists());
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -336,7 +411,7 @@ mod tests {
         store.set("id", "Bad\tname\r\nhere", 100);
         store.flush().unwrap();
 
-        let reloaded = Store::load(dir.join("devices.tsv"));
+        let reloaded = Store::load(dir.join("devices.json"));
         let (_, entry) = reloaded.list().next().unwrap();
         assert_eq!(entry.name, "Bad name  here");
         std::fs::remove_dir_all(dir).unwrap();

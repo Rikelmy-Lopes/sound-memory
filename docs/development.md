@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide explains how to work locally on the `sound-memory` codebase, from building the project to running tests and making feature additions.
+This guide explains how to work locally on the `Sound Memory` codebase, from building the project to running tests and making feature additions.
 
 ## Prerequisites
 

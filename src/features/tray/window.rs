@@ -66,7 +66,7 @@ pub fn run(
         let module = GetModuleHandleW(None)?;
         let instance = windows::Win32::Foundation::HINSTANCE(module.0);
         let icon = LoadIconW(None, IDI_APPLICATION)?;
-        let class_name = w!("BtVolumeTrayWindow");
+        let class_name = w!("SoundMemoryTrayWindow");
 
         let window_class = WNDCLASSW {
             style: CS_DBLCLKS,
@@ -98,7 +98,7 @@ pub fn run(
         let hwnd = CreateWindowExW(
             WINDOW_EX_STYLE(0),
             class_name,
-            w!("sound-memory"),
+            w!("Sound Memory"),
             WS_OVERLAPPED,
             0,
             0,
@@ -242,14 +242,14 @@ impl Ctx {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let tip = match devices.as_slice() {
-            [] => "sound-memory · waiting for Bluetooth audio".to_string(),
+            [] => "Sound Memory · waiting for Bluetooth audio".to_string(),
             [one] => format!(
-                "sound-memory · {} · {}%",
+                "Sound Memory · {} · {}%",
                 util::truncate(&one.name, 60),
                 one.level_pct
             ),
             many => format!(
-                "sound-memory · {} devices · {}%",
+                "Sound Memory · {} devices · {}%",
                 many.len(),
                 many[0].level_pct
             ),
@@ -274,10 +274,7 @@ impl Ctx {
         let ctx = CommandContext::new(Arc::clone(&self.shared), self.audio.clone())
             .with_notifier(Box::new(TrayNotifier::new(self.nid)));
 
-        if matches!(
-            self.commands.run(id, &ctx),
-            Some(CommandOutcome::Exit)
-        ) {
+        if matches!(self.commands.run(id, &ctx), Some(CommandOutcome::Exit)) {
             unsafe {
                 let _ = DestroyWindow(self.hwnd);
             }

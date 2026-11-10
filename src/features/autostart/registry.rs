@@ -12,7 +12,7 @@ use windows::Win32::System::Registry::{
 use crate::core::util;
 
 const RUN_KEY: PCWSTR = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
-const VALUE_NAME: PCWSTR = w!("BtVolume");
+const VALUE_NAME: PCWSTR = w!("Sound Memory");
 
 pub fn is_enabled() -> bool {
     unsafe {

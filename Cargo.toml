@@ -2,7 +2,7 @@
 name = "sound-memory"
 version = "0.1.0"
 edition = "2021"
-description = "Remembers and restores the system volume of Bluetooth audio devices on Windows"
+description = "Sound Memory remembers and restores the system volume of Bluetooth audio devices on Windows"
 license = "MIT"
 
 [dependencies]
@@ -26,6 +26,13 @@ windows = { version = "0.62.2", features = [
 
 [dependencies.windows-core]
 version = "0.62.2"
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1.0"
 
 [dependencies.eframe]
 version = "0.37"
