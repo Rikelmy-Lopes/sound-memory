@@ -201,6 +201,11 @@ fn card_frame() -> egui::Frame {
         .inner_margin(Margin::same(16))
 }
 
+/// Top padding that centers `content` inside `min_height`.
+fn centering_pad(min_height: f32, content: f32) -> f32 {
+    ((min_height - content) / 2.0).max(0.0)
+}
+
 fn stat_card(
     ui: &mut egui::Ui,
     width: f32,
@@ -209,12 +214,46 @@ fn stat_card(
     accent: Color32,
     value_size: f32,
 ) {
+    const LABEL_SIZE: f32 = 11.0;
+    const VALUE_GAP: f32 = 3.0;
+    // Taller than the tallest content (label + gap + 21 pt value) so the
+    // measured padding is always positive and truly centers the block.
+    const MIN_HEIGHT: f32 = 52.0;
+
     card_frame().inner_margin(Margin::same(14)).show(ui, |ui| {
-        ui.set_width((width - 28.0).max(60.0));
-        ui.set_min_height(42.0);
-        ui.label(RichText::new(label).size(11.0).strong().color(MUTED));
-        ui.add_space(3.0);
-        ui.label(RichText::new(value).size(value_size).strong().color(accent));
+        let inner_width = (width - 28.0).max(60.0);
+        ui.set_width(inner_width);
+        ui.set_min_height(MIN_HEIGHT);
+
+        // `stat_card` is called from a horizontal row, and a frame inherits
+        // its parent's layout. Force a vertical stack so the label sits above
+        // the value, then center that block inside the fixed height.
+        ui.with_layout(Layout::top_down(Align::Min), |ui| {
+            ui.set_width(inner_width);
+
+            let label_height = ui.fonts_mut(|fonts| {
+                fonts.row_height(&egui::FontId::proportional(LABEL_SIZE))
+            });
+            let value_height = ui.fonts_mut(|fonts| {
+                fonts.row_height(&egui::FontId::proportional(value_size))
+            });
+            let content = label_height + VALUE_GAP + value_height;
+            ui.add_space(centering_pad(MIN_HEIGHT, content));
+
+            ui.label(
+                RichText::new(label)
+                    .size(LABEL_SIZE)
+                    .strong()
+                    .color(MUTED),
+            );
+            ui.add_space(VALUE_GAP);
+            ui.label(
+                RichText::new(value)
+                    .size(value_size)
+                    .strong()
+                    .color(accent),
+            );
+        });
     });
 }
 
@@ -445,6 +484,16 @@ mod tests {
             name: name.to_string(),
             level_pct,
         }
+    }
+
+    #[test]
+    fn centering_pad_splits_remaining_space_evenly() {
+        assert_eq!(centering_pad(42.0, 30.0), 6.0);
+    }
+
+    #[test]
+    fn centering_pad_never_negative_when_content_overflows() {
+        assert_eq!(centering_pad(42.0, 50.0), 0.0);
     }
 
     #[test]
